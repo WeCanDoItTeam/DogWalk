@@ -1,0 +1,16 @@
+# 환경 설정
+.env
+.env.local
+# Python 캐시 파일
+**/__pycache__/
+*.py[cod]
+*$py.class
+# 가상 환경
+venv/
+env/
+.venv/
+
+# 모든 .log 파일 제외
+*.log 
+# 모든 .tmp 파일 제외
+*.tmp 
