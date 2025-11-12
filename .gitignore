@@ -14,6 +14,7 @@ env/
 *.log 
 # 모든 .tmp 파일 제외
 *.tmp 
+0.FrontEnd/dogwalk_frontend/.python-version
 1.BackEnd/dogwalk_backend/Lib/
 1.BackEnd/dogwalk_backend/Scripts/
 1.BackEnd/dogwalk_backend/.vscode/
