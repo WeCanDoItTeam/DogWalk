@@ -21,6 +21,14 @@ REDIS_PORT = 6379
 MODEL_GPT_4O_MINI = "gpt-4o-mini" # 테스트용. 싸다
 MODEL_GPT_4 = "gpt-4" # 실전용. 비싸다
 
+POI_CULTURE = "culture" # 문화
+POI_EAT = "eat" # 식당
+POI_WALK = "walk" # 산책
+POI_HOSPITAL = "hospital" # 병원
+POI_TRIP = "trip" # 여행
+POI_SERVICE = "service" # 미용
+POI_SHOP = "shop" # 동물샵
+
 GEO_CULTURE = "culture_geo" # 문화
 GEO_EAT = "eat_geo" # 식당
 GEO_WALK = "walk_geo" # 산책
@@ -56,7 +64,7 @@ class WalkRecommendationData(BaseModel):
     duration_min: int = Field(description="추천 산책 시간(분)")
     intensity: int = Field(ge=1, le=3, description="산책 강도 (1=평지 및 건물 내, 2=약간의 경사로, 3=심한 경사로)")
     
-class POIData_Custom(BaseModel):
+class POIData(BaseModel):
     # MGMT_ID: int = Field(description="테이블 고유 ID")
     category: str = Field(description="카테고리 7개 (문화/식당/산책/병원/서비스/숙박/여행)")
     place_nm: str = Field(description="장소 명")
@@ -65,14 +73,19 @@ class POIData_Custom(BaseModel):
     land_address: str = Field(description="주소")
     cours_dc: Optional[str] = Field(default= None, description="산책로일 시 경로 표기")
     # lvl: int = Field(description="산책 강도 (1=평지 및 건물 내, 2=약간의 경사로, 3=심한 경사로)")
-    poi_title: str = Field(default= None, description="추천 아이템 제목")
+    poi_title: Optional[str] = Field(default= None, description="추천 아이템 제목")
 
 class POIData_List(BaseModel):
-    poi: List[POIData_Custom] = Field(description="선택된 장소 리스트")
+    poi: List[POIData] = Field(description="선택된 장소 리스트")
 
 class POIRecommendationData(BaseModel):
     radius: float = Field(description="반경 (km)") # 소수점 주의!!!!!!!!!!!!!!!!!
-    poi: List[POIData_Custom] = Field(default_factory=list, description="POI 리스트")
+    poi: List[POIData] = Field(default_factory=list, description="POI 리스트")
+
+class POIPLaceViewRequest(BaseModel):
+    category: str = Field(description="카테고리: culture / eat / walk / hospital / trip / service / shop")
+    radius: float = Field(description="반경 (km)")
+    user_pos: UserPosData # 사용자 위치 정보
 
 #======== [ Fast API (차후 들어낼 예정) ] ========
 
@@ -84,9 +97,6 @@ app = FastAPI(title="DogWalk")
 @app.get("/")
 def root():
     return {"message": "Hello, DogWalk BackEnd Server!!"}
-
-class PromptRequest(BaseModel):
-    user_input: str
 
 ## LangChain 파이프라인 엔드포인트
 @app.post("/course_recommend")
@@ -120,7 +130,7 @@ if connect_redis:
     except Exception as e:
         print("Redis 연결 실패 : ", e)
 
-#======== [ Redis ] ========
+#======== [ Method ] ========
 
 # 1. LLM 산책 시간과 강도 설정
 # 입력: 강아지 정보(json), 사용자 위치(위도,경도)
@@ -167,7 +177,7 @@ def walk_recommend(dog_info: DogInfoData):
 def poi_recommend(walk_data:WalkRecommendationData, user_pos:UserPosData):
     max_level = walk_data.intensity # 산책 강도
     speed_kmh = 4 # 속도 (성인 기준 평균 속도 4km/h)
-    radius = min(2,speed_kmh * (walk_data.duration_min / 60))# 최대 이동 거리 계산 (최대 반경 2km 제한)
+    radius = min(2,speed_kmh * (walk_data.duration_min / 60)) # 최대 이동 거리 계산 (최대 반경 2km 제한)
     
     categories = [GEO_WALK, GEO_CULTURE, GEO_EAT]
     filtered_values = []
@@ -177,7 +187,6 @@ def poi_recommend(walk_data:WalkRecommendationData, user_pos:UserPosData):
         if nearby:
             filtered_values.extend([r.hgetall(v) for v in nearby if int(r.hgetall(v).get('lvl', 99)) <= max_level])
 
-    # 사용자 위치, 골라온 poi데이터
     prompt_template = """
     당신은 반려견과 함께 산책 겸 나들이를 계획하는 사람입니다.
     각 장소는 카테고리(category), 이름(place_nm), 난이도(lvl) 등의 정보를 포함합니다.
@@ -194,7 +203,7 @@ def poi_recommend(walk_data:WalkRecommendationData, user_pos:UserPosData):
     - land_address
     - cours_dc
 
-    입력 데이터 (JSON 리스트 형식):{filtered_values}
+    입력 데이터 (JSON 리스트 형식): {filtered_values}
 
     출력은 반드시 JSON 형식으로, 데이터를 변경하지 않고, 선택한 3개의 장소를 아래 구조로 반환하세요:
     {{ 'poi':
@@ -252,6 +261,7 @@ def title_recommend(poi_data:POIRecommendationData):
             "휴식하기 좋은 펫프렌들리 카페, 유폴24시 애견셀프목욕 무인카페"
         ]
     """
+
     prompt = ChatPromptTemplate.from_template(prompt_template)
     parser = StrOutputParser()
 
@@ -260,14 +270,37 @@ def title_recommend(poi_data:POIRecommendationData):
     input_data = {"poi_data": json.dumps([{"category": p.category, "place_nm": p.place_nm} for p in poi_data.poi])}
     title_list = json.loads(chain.invoke(input_data))
 
-    for base, new in zip(poi_data.poi, title_list):
-        base.poi_title = new  # title만 업데이트
+    for base, new_title in zip(poi_data.poi, title_list):
+        base.poi_title = new_title  # title만 업데이트
     
     print("3. title_recommend : ", poi_data)
     return poi_data # 제목만 업데이트 해서 반환
 
+#=========== [ POI 요청 메서드 ] =============
 
-#=========== [ 테스트 코드 단 (차후 삭제) ] =============
+# 입력: 카테고리, 반경, 위치
+# 출력: 카테고리 별 반경 내 모든 poi
+poi_list = [POI_CULTURE, POI_EAT, POI_WALK, POI_HOSPITAL, POI_TRIP, POI_SERVICE, POI_SHOP]
+def poi_placeview(data:POIPLaceViewRequest):
+    # 카테고리 키 검증
+    if data.category in poi_list:
+        nearby = r.georadius(data.category, data.user_pos.user_lon, data.user_pos.user_lat, data.radius, unit="km")
+        filtered_values: list[POIData] = []
+        if nearby:
+            filtered_values.extend([r.hgetall(v) for v in nearby])
+
+        # if nearby:
+        #     for v in nearby:
+        #         poi_dict = r.hgetall(v)
+        #         decoded = {k.decode(): v.decode() for k, v in poi_dict.items()}
+        #         poi_obj = POIData(**decoded)
+        #         filtered_values.append(poi_obj)
+        
+        return filtered_values
+    else:
+        print(f"잘못된 카테고리: {data.category}")
+
+#=========== [ 테스트 코드 (차후 삭제) ] =============
 
 start = time.time()
 print("🚀 실행 시작")
@@ -281,9 +314,3 @@ print("4. result : ", result)
 
 end = time.time()
 print(f"✅ 실행 완료 (총 {end - start:.2f}초 소요)")
-
-
-# POI 요청 메서드
-
-
-# 챗봇 메서드
