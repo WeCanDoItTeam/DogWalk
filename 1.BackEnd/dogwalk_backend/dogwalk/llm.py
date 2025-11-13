@@ -1,6 +1,8 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import InMemoryChatMessageHistory
 
 from dotenv import load_dotenv
 import os
@@ -12,12 +14,32 @@ print(api_key)
 
 # LLM 설정 (클래스 또는 모듈 외부에서 한 번만 초기화)
 llm = ChatOpenAI(model="gpt-4o-mini")
-prompt = ChatPromptTemplate.from_template(
-    "주어진 문제를 풀기 위하여 계획을 세우고 단계에 따라 차근차근 문제를 푸세요. <Question>: {input}"
-)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "당신은 사용자와 친근하게 대화하는 AI 어시스턴트입니다."),
+    # history 변수는 메시지 객체들의 리스트가 될 것이므로 MessagesPlaceholder를 사용합니다.
+    MessagesPlaceholder(variable_name="history"),
+    ("human", "{input}"),
+])
 output_parser = StrOutputParser()
 chain = prompt | llm | output_parser
 
+# 3. 세션별 대화 기록을 저장할 임시 저장소 (실제로는 DB 등을 사용)
+store = {}
+
+
+# 세션 ID에 따라 대화 기록을 가져오는 함수
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
+    if session_id not in store:
+        store[session_id] = InMemoryChatMessageHistory()
+    return store[session_id]
+
+# 4. RunnableWithMessageHistory로 체인을 감싸서 메모리 기능 추가
+chain_with_history = RunnableWithMessageHistory(
+    chain,
+    get_session_history,       # ✅ 세션별 대화기록 가져오는 함수
+    input_messages_key="input",   # 사용자의 입력을 나타내는 키
+    history_messages_key="history"   # 프롬프트의 MessagesPlaceholder 변수명
+)
 
 def get_answer(user_input: str) -> str:
     """
@@ -36,8 +58,12 @@ def get_answer(user_input: str) -> str:
         raise ValueError("입력이 비어있습니다. 다시 시도해주세요.")
     
     try:
-        result = chain.invoke({"input": user_input.strip()})
-        return result
+        response_a1 = chain_with_history.invoke(
+            {"input": user_input.strip()},
+            config={"configurable": {"session_id": "user_a"}}  # ✅ 세션 ID 지정
+        )
+        #result = chain.invoke({"input": user_input.strip()})
+        return response_a1
     except Exception as e:
         raise Exception(f"답변 생성 중 오류 발생: {str(e)}")
 
