@@ -23,3 +23,7 @@ env/
 # Secrets 파일 제외
 .streamlit/secrets.toml
 secrets.toml
+
+#C파일 제외
+*.c
+*.h
