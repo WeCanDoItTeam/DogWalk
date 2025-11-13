@@ -19,3 +19,7 @@ env/
 1.BackEnd/dogwalk_backend/Scripts/
 1.BackEnd/dogwalk_backend/.vscode/
 1.BackEnd/dogwalk_backend/pyvenv.cfg
+
+# Secrets 파일 제외
+.streamlit/secrets.toml
+secrets.toml
