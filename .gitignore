@@ -27,3 +27,10 @@ secrets.toml
 #C파일 제외
 *.c
 *.h
+
+#sql 파일 제외
+*.sqlite3
+
+#기타 파일 제외
+*.bin
+*.1
