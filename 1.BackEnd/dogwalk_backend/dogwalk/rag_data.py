@@ -20,7 +20,7 @@ import shutil
 # 환경 변수 설정
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
-data_path = Path("data/train")
+data_path = Path("data/labeling")
 
 def load_json_from_zip(zip_path, content_key="disease"):
     # print("2")
@@ -31,24 +31,22 @@ def load_json_from_zip(zip_path, content_key="disease"):
                 with z.open(filename) as f:
                     data = json.load(f)
                     # print("1")
-                    # JSON 구조에 맞게 내용 추출
-                    # 원하는 필드 합쳐서 문자열로 만들면 된다.
-                    text = ""
-                    if isinstance(data, dict):
-                        if content_key in data:
-                            text = data[content_key]
-                            # print(text)
-                        else:
-                            # dict 전체를 flatten해서 문자열로 만들 수도 있음
-                            text = json.dumps(data, ensure_ascii=False)
-                    else:
-                        # JSON 리스트나 다른 구조도 그냥 문자열화
-                        text = json.dumps(data, ensure_ascii=False)
+                    # 문서 전체를 하나의 덩어리로 구성
+                    text = (
+                        f"[meta]\n"
+                        f"lifeCycle: {data['meta']['lifeCycle']}\n"
+                        f"department: {data['meta']['department']}\n"
+                        f"disease: {data['meta']['disease']}\n\n"
+                        f"[instruction]\n{data['qa']['instruction']}\n\n"
+                        f"[question]\n{data['qa']['input']}\n\n"
+                        f"[answer]\n{data['qa']['output']}"
+                    )
 
-                    docs.append(Document(
-                        page_content=text,
-                        metadata={"source": zip_path, "file": filename}
-                    ))
+                    # 문서 생성
+                    docs.append({
+                        "text": text,
+                        "metadata": data["meta"]     # 검색 필터에 유용
+                    })
 
     return docs
 
@@ -78,33 +76,38 @@ all_doc_text = load_all_zips(data_path,"disease")
 #     print(f"  {item.name} {'(DIR)' if item.is_dir() else ''}")
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=400,
-    chunk_overlap=60,
+    chunk_size=200000,
+    chunk_overlap=0,
     separators=["\n\n", "\n", ".", " ", ""]
 )
 
-chunks = text_splitter.split_documents(all_doc_text)
-print(f"총 {len(chunks)}개 청크 생성 완료")
+# chunks = text_splitter.split_documents(all_doc_text)
+#print(f"총 {len(chunks)}개 청크 생성 완료")
+final_docs = []
+for doc in all_doc_text:
+    # 사실상 chunks는 항상 1개
+    chunks = text_splitter.split_text(doc["text"])
+    final_docs.append({
+        "text": chunks[0],
+        "metadata": doc["metadata"]
+    })
+
+print(f"총 {len(final_docs)}개 문서 준비 완료")
 
 # ============================================================================
 # 3단계: 임베딩 및 벡터 스토어 생성
 # ============================================================================
-embeddings = OpenAIEmbeddings(chunk_size=50)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small",chunk_size=10)
+
+db_dir = "chroma_db_dog_qa"
+# 문자열 dict → Document 객체로 변환
+document_list = [
+    Document(page_content=d["text"], metadata=d["metadata"])
+    for d in final_docs
+]
 
 
-vectorstore = Chroma.from_documents(
-    documents=chunks,
-    embedding=embeddings,
-    persist_directory="chroma_db_dog"
-)
-db_dir = "chroma_db_dog"
-
-# 방법 선택:
-# ① 매번 새로 생성하려면
-if Path(db_dir).exists():
-    shutil.rmtree(db_dir)
-
-# ② 또는 기존 DB가 있으면 로드
+# 기존 DB가 있으면 로드
 if Path(db_dir).exists():
     print(f"기존 {db_dir}에서 로드")
     vectorstore = Chroma(
@@ -114,7 +117,7 @@ if Path(db_dir).exists():
 else:
     print("새로운 벡터 스토어 생성")
     vectorstore = Chroma.from_documents(
-        documents=chunks,
+        documents=document_list,
         embedding=embeddings,
         persist_directory=db_dir
     )
@@ -127,7 +130,7 @@ print(f"벡터 스토어 준비 완료")
 # ============================================================================
 retriever = vectorstore.as_retriever(
     search_type="similarity",
-    search_kwargs={"k": 3}
+    search_kwargs={"k": 4}
 )
 
 
