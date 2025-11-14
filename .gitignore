@@ -9,6 +9,7 @@
 venv/
 env/
 .venv/
+**/pyvenv.cfg
 
 # 모든 .log 파일 제외
 *.log 
@@ -18,12 +19,12 @@ env/
 0.FrontEnd/dogwalk_frontend/.python-version
 0.FrontEnd/Lib/
 0.FrontEnd/Scripts/
-0.FrontEnd/pyvenv.cfg
+0.FrontEnd/etc/
+0.FrontEnd/share/jupyter/nbextensions/pydeck/
 
 1.BackEnd/dogwalk_backend/Lib/
 1.BackEnd/dogwalk_backend/Scripts/
 1.BackEnd/dogwalk_backend/.vscode/
-1.BackEnd/dogwalk_backend/pyvenv.cfg
 
 # Secrets 파일 제외
 .streamlit/secrets.toml
@@ -39,8 +40,5 @@ secrets.toml
 #기타 파일 제외
 *.bin
 *.1
-
-0.FrontEnd/etc/
-0.FrontEnd/share/jupyter/nbextensions/pydeck/
 *.zip
 *.pickle
