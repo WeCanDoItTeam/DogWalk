@@ -1,23 +1,18 @@
 import streamlit as st
 from dbmanager import get_connection
-import bcrypt # 비밀번호 해싱 라이브러리
 
 # 사용자 인증 함수
 def verify_user_credentials(user_id: str, user_passwd: str) -> bool:
     conn = get_connection() # DB 연결
     cursor = conn.cursor(dictionary=True) 
     # SQL 쿼리 동작 (사용자 아이디에 해당하는 해시된 비밀번호 조회) --> user_id가 %s에 대입
-    cursor.execute("SELECT user_passwd FROM users WHERE user_id = %s", (user_id,))
-    result = cursor.fetchone() # {'user_passwd': 'hashed_password} ==> 못 찾으면 None 반환
+    cursor.execute("SELECT user_id FROM users WHERE user_id = %s AND user_passwd = %s", (user_id,user_passwd))
+    result = cursor.fetchone() # {'user_id': 'user_id'} ==> 못 찾으면 None 반환
     # DB 연결 종료
     cursor.close()
     conn.close()
-
-    if result is None:
-        return False  # 결과: "아이디 또는 비밀번호가 잘못되었습니다."
-
-    stored_hash = result["user_passwd"].encode("utf-8")
-    return bcrypt.checkpw(user_passwd.encode("utf-8"), stored_hash) # True/False
+    
+    return result is not None
 
 
 def login_window():

@@ -11,7 +11,9 @@ def get_personality_traits():
     
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT personality_trait FROM personalities")
+        cursor.execute("""SELECT * from  dog_personalities a 
+                       LEFT OUTER JOIN comm_code b ON b.code_cd='personalities' AND a.personality_id=b.code_id
+                       WHERE a.dog_id=1""")
         return [row[0] for row in cursor.fetchall()]
     except mysql.connector.Error as e:
         st.error(f"성격 특성 조회 중 오류가 발생했습니다: {e}")

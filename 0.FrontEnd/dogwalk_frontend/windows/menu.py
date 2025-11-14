@@ -18,3 +18,32 @@ def menu_window():
         st.session_state.dog_id = None
         st.session_state.page = 'login'
         st.rerun()
+    # 하단 네비게이션 바 (앱 스타일)
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        home_button = st.button("🏠\n\n홈", key="nav_home", use_container_width=True)
+    
+    with col2:
+        stats_button = st.button("📊\n\n통계", key="nav_stats", use_container_width=True)
+    
+    with col3:
+        settings_button = st.button("⚙️\n\n설정", key="nav_settings", use_container_width=True)
+    
+    # 버튼 클릭 처리
+    if home_button:
+        st.session_state.page = 'menu'
+        st.rerun()
+    
+    if stats_button:
+        st.info("통계 페이지로 이동 (구현 예정)")
+        # st.session_state.page = 'stats'
+        # st.rerun()
+    
+    if settings_button:
+        st.info("설정 페이지로 이동 (구현 예정)")
+        # st.session_state.page = 'settings'
+        # st.rerun()

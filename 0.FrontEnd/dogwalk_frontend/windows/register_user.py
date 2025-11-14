@@ -1,6 +1,5 @@
 import streamlit as st
 from dbmanager import get_connection
-import bcrypt
 
 def register_new_user(user_id: str, user_passwd: str) -> bool:
     try:
@@ -12,10 +11,8 @@ def register_new_user(user_id: str, user_passwd: str) -> bool:
             cursor.close()
             conn.close()
             return False
-        # gensalt(): 보안 위해 매번 다른 PW 해시값을 만들기 위한 랜덤 데이터
-        hashed_passwd = bcrypt.hashpw(user_passwd.encode('utf-8'), bcrypt.gensalt())
         cursor.execute("INSERT INTO users (user_id, user_passwd) VALUES (%s, %s)",
-                       (user_id, hashed_passwd.decode('utf-8')))
+                       (user_id, user_passwd))
         conn.commit() # DB에 저장
         cursor.close()
         conn.close()

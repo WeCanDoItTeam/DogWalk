@@ -11,8 +11,10 @@ def get_vaccine_names():
     
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT vaccine_name FROM vaccines")
-        return [row[0] for row in cursor.fetchall()]
+        cursor.execute("""SELECT * FROM vaccination_records a 
+                       LEFT OUTER JOIN comm_code b ON b.code_cd='vaccines' AND a.vaccine_id=b.code_id
+                       WHERE a.dog_id=1""")
+        return cursor.fetchall()
     except mysql.connector.Error as e:
         st.error(f"백신 이름 조회 중 오류가 발생했습니다: {e}")
         return []

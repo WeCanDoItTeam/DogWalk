@@ -14,7 +14,8 @@ def register_dog_and_details(user_id, dog_data, vaccines, personalities):
             """INSERT INTO dogs (user_id, name, birthdate, gender, breed, weight, is_neutered) VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             (user_id, dog_data['name'], dog_data['birthdate'], dog_data['gender'], dog_data['breed'], dog_data['weight'], dog_data['is_neutered'])
         )
-        dog_id = cursor.lastrowid
+        
+        dog_id = cursor.lastrowid # INSERT 성공 시: 1,2,3 // INSERT 실패 시: 0 또는 None
         
         if dog_id:
             # 2. vaccination_records 테이블 삽입

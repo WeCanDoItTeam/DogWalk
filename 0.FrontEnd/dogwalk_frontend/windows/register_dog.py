@@ -1,6 +1,6 @@
 import streamlit as st
 from dbmanager import get_connection
-from datetime import date
+from datetime import date, timedelta
 from utils.dog_details import register_dog_and_details
 from utils.vaccines import get_vaccine_names
 from utils.personalities import get_personality_traits
@@ -16,23 +16,26 @@ def register_dog_window():
         return
     
     # 데이터 로드
-    all_vaccines = get_vaccine_names()
-    all_personalities = get_personality_traits()
+    all_vaccines = get_vaccine_names() # dog_id를 list형태로 반환
+    all_personalities = get_personality_traits() 
 
     st.subheader("강아지 기본 정보")
     
     # 4. dogs 테이블 정보 입력
-    dog_name = st.text_input("강아지 이름 (name)", key="dog_name", max_chars=20)
-    dog_birthdate = st.date_input("생일 (birthdate)", value=date.today(), max_value=date.today(), key="dog_birthdate")
-    dog_gender = st.selectbox("성별 (gender)", ['Male', 'Female', 'Unknown'], key="dog_gender")
-    dog_breed = st.text_input("견종 (breed)", key="dog_breed", max_chars=50)
-    dog_weight = st.number_input("몸무게 (kg) (weight)", min_value=0.1, max_value=100.0, step=0.1, key="dog_weight")
+    dog_name = st.text_input("강아지 이름", key="dog_name", max_chars=50)
+    dog_birthdate = st.date_input("생일", value=date.today(), 
+                                  min_value=date.today() - timedelta(days=35*365), 
+                                  max_value=date.today(), 
+                                  key="dog_birthdate")
+    dog_gender = st.selectbox("성별", ['Male', 'Female', 'Unknown'], key="dog_gender")
+    # dog_breed: 추가 구현 필요 (현재: 01같이 char(2) 받음)
+    dog_breed = st.text_input("견종", key="dog_breed", max_chars=2) 
+    dog_weight = st.number_input("몸무게 (kg)", min_value=0.1, max_value=100.0, step=0.1, key="dog_weight")
     
     # is_neutered는 TINYINT(1)이므로 True/False로 입력받는 것이 적절
-    neutered_options = {True: '예 (중성화)', False: '아니오 (미중성화)'}
-    is_neutered_label = st.radio("중성화 여부", options=list(neutered_options.values()), index=1, key="dog_neutered_radio")
+    neutered_options = {True: '예', False: '아니오'}
+    is_neutered_label = st.radio("중성화 여부", options=list(neutered_options.values()), index=0, key="dog_neutered_radio")
     is_neutered_value = [k for k, v in neutered_options.items() if v == is_neutered_label][0]
-
 
     st.subheader("예방 접종 정보")
     # injection_date 입력
@@ -52,7 +55,6 @@ def register_dog_window():
                 )
                 vaccination_records[vaccine] = injection_date
     
-
     st.subheader("성격 특성")
     # personalities table 정보 입력
     selected_personalities = st.multiselect(
