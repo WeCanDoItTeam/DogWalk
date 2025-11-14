@@ -34,3 +34,5 @@ secrets.toml
 #기타 파일 제외
 *.bin
 *.1
+*.zip
+*.pickle
