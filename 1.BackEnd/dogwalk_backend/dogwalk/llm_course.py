@@ -123,6 +123,7 @@ llm_high = ChatOpenAI(model=MODEL_GPT_4, temperature=0, openai_api_key=openai_ap
 connect_redis = True
 if connect_redis:
     try:
+        # TODO 커넥션풀 만들기
         r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
         
         r.ping()
@@ -283,34 +284,48 @@ def title_recommend(poi_data:POIRecommendationData):
 poi_list = [POI_CULTURE, POI_EAT, POI_WALK, POI_HOSPITAL, POI_TRIP, POI_SERVICE, POI_SHOP]
 def poi_placeview(data:POIPLaceViewRequest):
     # 카테고리 키 검증
+    filtered_values: list[POIData] = []
     if data.category in poi_list:
-        nearby = r.georadius(data.category, data.user_pos.user_lon, data.user_pos.user_lat, data.radius, unit="km")
-        filtered_values: list[POIData] = []
+        nearby = r.georadius(data.category + "_geo", data.user_pos.user_lon, data.user_pos.user_lat, data.radius, unit="km")
         if nearby:
-            filtered_values.extend([r.hgetall(v) for v in nearby])
+            for key in nearby:
+                raw = r.hgetall(key)
+                if not raw: continue
+                
+                try:
+                    poi = POIData(
+                        category=raw.get("category"),
+                        place_nm=raw.get("place_nm"),
+                        latitude=float(raw.get("latitude")),
+                        longitude=float(raw.get("longitude")),
+                        land_address=raw.get("land_address", ""),
+                        cours_dc=raw.get("cours_dc", ""),
+                        poi_title=raw.get("poi_title", None)
+                    )
+                    filtered_values.append(poi)
+                except Exception as e:
+                    print(f"[에러] POIData 변환 실패: {key}, {e}")
 
-        # if nearby:
-        #     for v in nearby:
-        #         poi_dict = r.hgetall(v)
-        #         decoded = {k.decode(): v.decode() for k, v in poi_dict.items()}
-        #         poi_obj = POIData(**decoded)
-        #         filtered_values.append(poi_obj)
-        
-        return filtered_values
+        print("1. poi_placeview : ", nearby)
     else:
         print(f"잘못된 카테고리: {data.category}")
+    
+    return filtered_values
 
 #=========== [ 테스트 코드 (차후 삭제) ] =============
 
 start = time.time()
 print("🚀 실행 시작")
 
-dog = DogInfoData(age=3, breed="보더콜리",gender=0,weight=4.2)
-user = UserPosData(user_lat=37.2498756, user_lon=127.0080277)
+# dog = DogInfoData(age=3, breed="보더콜리",gender=0,weight=4.2)
+# user = UserPosData(user_lat=37.2498756, user_lon=127.0080277)
+# data = CourseRcommendRequest(dog_info=dog, user_pos=user)
+# result = course_recommend(data)
 
-data = CourseRcommendRequest(dog_info=dog, user_pos=user)
-result = course_recommend(data)
-print("4. result : ", result)
+# poi = POIPLaceViewRequest(category=POI_CULTURE, radius=2, user_pos=UserPosData(user_lat=37.2498756, user_lon=127.1180277))
+# result = poi_placeview(poi)
+
+# print("## result : ", result)
 
 end = time.time()
 print(f"✅ 실행 완료 (총 {end - start:.2f}초 소요)")
