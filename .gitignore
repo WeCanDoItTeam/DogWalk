@@ -42,3 +42,5 @@ secrets.toml
 
 0.FrontEnd/etc/
 0.FrontEnd/share/jupyter/nbextensions/pydeck/
+*.zip
+*.pickle
