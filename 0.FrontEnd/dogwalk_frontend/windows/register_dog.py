@@ -43,7 +43,7 @@ def register_dog_window():
     for vaccine in all_vaccines:
         col_v, col_d = st.columns([1, 1])
         with col_v:
-            is_checked = st.checkbox(vaccine, key=f"vac_check_{vaccine}")
+            is_checked = st.checkbox(vaccine['name'], key=f"vac_check_{vaccine['id']}")
         with col_d:
             if is_checked:
                 injection_date = st.date_input(
@@ -53,7 +53,7 @@ def register_dog_window():
                     key=f"vac_date_{vaccine}",
                     label_visibility="collapsed"
                 )
-                vaccination_records[vaccine] = injection_date
+                vaccination_records[vaccine['id']] = injection_date
     
     st.subheader("성격 특성")
     # personalities table 정보 입력

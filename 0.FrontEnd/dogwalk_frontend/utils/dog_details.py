@@ -21,7 +21,7 @@ def register_dog_and_details(user_id, dog_data, vaccines, personalities):
             # 2. vaccination_records 테이블 삽입
             for vaccine_name, injection_date in vaccines.items():
                 cursor.execute(
-                    "SELECT vaccine_id FROM vaccines WHERE vaccine_name = %s", (vaccine_name,)
+                    "SELECT code_id FROM comm_code WHERE code_cd = 'vaccines' AND code_nm = %s", (vaccine_name,)
                 )
                 result = cursor.fetchone()
                 if result:
@@ -34,7 +34,7 @@ def register_dog_and_details(user_id, dog_data, vaccines, personalities):
             # 3. dog_personalities 테이블 삽입
             for personality_trait in personalities:
                 cursor.execute(
-                    "SELECT personality_id FROM personalities WHERE personality_trait = %s", (personality_trait,)
+                    "SELECT code_id FROM comm_code WHERE code_cd = 'personalities' AND code_nm = %s", (personality_trait,)
                 )
                 result = cursor.fetchone()
                 if result:
